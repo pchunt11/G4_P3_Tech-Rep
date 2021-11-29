@@ -1,0 +1,186 @@
+---
+title: ''
+author: "Xiao Liu, LE Lee, and Paul Hunt"
+date: "11/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, echo = F,
+                      message = F, warning = F)
+library(ggplot2)
+library(ggpubr)
+library(table1)
+library(TSA)
+library(lme4)
+```
+
+
+
+## Introduction
+
+## Data
+```{r Data Import and Cleaning}
+# Import the Data
+data.p3 <- read.csv("otter2.csv", stringsAsFactors = T)
+
+# Create a Seasonal Factor
+data.p3$Season <- factor(nrow(data.p3))
+levels(data.p3$Season) <- c("Winter", "Spring",
+                            "Summer", "Fall")
+
+attach(data.p3)
+Season[(Month.1 == 12)|
+         (Month.1 ==1)|
+         (Month.1 ==2)]   <- "Winter"
+Season[(Month.1 == 3)|
+         (Month.1 == 4)|
+         (Month.1 == 5)]  <- "Spring"
+Season[(Month.1 == 6)|
+         (Month.1 == 7)|
+         (Month.1 == 8)]  <- "Summer"
+Season[(Month.1 == 9)|
+         (Month.1 == 10)|
+         (Month.1 == 11)] <- "Fall"
+
+data.p3$Season <- Season
+
+label(Trout)        <- "Trout Population"
+label(Water.Excess) <- "In-water Excess Activity"
+label(Land)         <- "Time spent on Land"
+label(Caloric)      <- "Caloric Expenditure"
+label(Water)        <- "Water Availability"
+```
+
+
+```{r Generating Table 1 (vars by season)}
+table_1.dat <- data.frame(Activity, Altitude,
+                          Trout, Season, Caloric,
+                          Water.Excess, Land,
+                          Water, Amoeba)
+table1(~.|Season, data=table_1.dat,
+       render.continuous =c(.= "Mean (SD)", .= "[Min, Max]"),
+       caption = "Descriptive Statistics of
+       Variables by Season")
+```
+
+```{r Generating Table 2 (Vars by site)}
+table_2.dat <- data.frame(Activity, Altitude,
+                          Trout, Site, Caloric,
+                          Water.Excess, Land,
+                          Water, Amoeba)
+table1(~.|Site, data=table_2.dat,
+       render.continuous =c(.= "Mean (SD)", .= "[Min, Max]"),
+       overall = F,
+       caption = "Descriptive Statistics of
+       Variables by Capture Site")
+```
+
+### Exploratory Data Analysis
+```{r Dependent Variable, fig.cap="Here we have plotted the change in activity at the five sites in the months since the beginning of the study. The general upward trend for all sites and the potential seasonal variation are more evident in the log-scale."}
+gg1.1 <- ggplot(data = data.p3,
+                aes(x = Month, y = Activity, color = Site)) +
+  geom_point() +
+  geom_smooth(se = F) + labs(x = NULL)
+
+gg1.2 <- ggplot(data = data.p3,
+                aes(x = Month, y = log(Activity), color = Site)) +
+  geom_point() +
+  geom_smooth(se = F) + labs(x = NULL)
+
+gg1 <- ggarrange(gg1.1,gg1.2, nrow = 1,
+                 common.legend = T,
+                 legend = "right")
+annotate_figure(gg1,
+                bottom = text_grob("Months since Beginning of Study", size = 11),
+                top = "Changes in Activity over Time by Site")
+```
+
+```{r}
+par(mfrow = c(2,1))
+acf(Activity)
+pacf(Activity, main = NULL)
+```
+
+```{r Scatterplot Matrix, fig.cap = "Here wehave included the predictor variables with clear and potential co-linearity in a scatterplot matrix with correlation coefficients in the upper triangle. Of particular concern is the nearly perfect inverse relationship between time on land and in water, and the strong relationship between those two variables and caloric expenditure."}
+
+panel.cor <- function(x, y, ...)
+{
+par(usr = c(0, 1, 0, 1))
+txt <- as.character(format(cor(x, y), digits=2))
+text(0.5, 0.5, txt)
+}
+pairs(na.omit(data.p3[,c("Altitude", "Trout", "Caloric", "Land", "Water")]),
+      main = "Scatterplot of Variables Exhibiting Co-linearity",
+      upper.panel = panel.cor)
+
+```
+
+```{r Seasonal effects on predictors, fig.cap="Boxplots of the predictor variables by season show little change between seasons for any of the predictors."}
+fig3.1 <- ggplot(data.p3, aes(fill = Season, y = Altitude)) + geom_boxplot()
+fig3.2 <- ggplot(data.p3, aes(fill = Season, y = Trout)) + geom_boxplot()
+fig3.3 <- ggplot(data.p3, aes(fill = Season, y = Caloric)) + geom_boxplot()
+fig3.4 <- ggplot(data.p3, aes(fill = Season, y = Water.Excess)) + geom_boxplot()
+fig3.5 <- ggplot(data.p3, aes(fill = Season, y = Amoeba)) + geom_boxplot()
+fig3.6 <- ggplot(data.p3, aes(fill = Season, y = Land)) + geom_boxplot()
+fig3.7 <- ggplot(data.p3, aes(fill = Season, y = Water)) + geom_boxplot()
+
+fig3 <- ggarrange(fig3.1, fig3.2, fig3.3, fig3.4, fig3.5, fig3.6, fig3.7,
+                  common.legend = T, legend = "right")
+
+annotate_figure(fig3, top = "Predictor Variables by Season")
+```
+
+```{r Locational effects on predictors, fig.cap="The boxplots of predictor variables by location show meaningful differences between altitude, trout population, and amoeba prescence between the five locations."}
+fig4.1 <- ggplot(data.p3, aes(fill = Site, y = Altitude)) + geom_boxplot()
+fig4.2 <- ggplot(data.p3, aes(fill = Site, y = Trout)) + geom_boxplot()
+fig4.3 <- ggplot(data.p3, aes(fill = Site, y = Caloric)) + geom_boxplot()
+fig4.4 <- ggplot(data.p3, aes(fill = Site, y = Water.Excess)) + geom_boxplot()
+fig4.5 <- ggplot(data.p3, aes(fill = Site, y = Amoeba)) + geom_boxplot()
+fig4.6 <- ggplot(data.p3, aes(fill = Site, y = Land)) + geom_boxplot()
+fig4.7 <- ggplot(data.p3, aes(fill = Site, y = Water)) + geom_boxplot()
+
+fig4 <- ggarrange(fig4.1, fig4.2, fig4.3, fig4.4, fig4.5, fig4.6, fig4.7,
+                  common.legend = T, legend = "right")
+
+annotate_figure(fig4, top = "Predictor Variables by Location")
+```
+
+
+
+
+
+## Model Specification
+```{r}
+lmod_1 <- lmer(log(Activity)~Caloric*Site+Land*Site+(Month|Site)+(Month|Month.1), data = data.p3)
+lmer_pred <- predict(lmod_1, newdata = data.frame(Caloric, Land, Month, Site, Month.1, Season))
+
+lmod.mat <- cbind(pred = lmer_pred, data.p3)
+
+ggplot(lmod.mat, aes(y = pred, x = Month, color = Site)) + geom_line() + geom_point(aes(y=log(Activity)))
+
+summary(lmod_1)
+```
+
+
+
+## Conclusion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
