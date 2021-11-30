@@ -13,6 +13,18 @@ library(ggpubr)
 library(table1)
 library(TSA)
 library(lme4)
+
+library(sp)
+library(ggmap)
+library(stringr)
+library(dplyr)
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ade4)
+library(ggbiplot)
+library(viridis)
+library(imputeTS)
+library(corrplot)
 ```
 
 
@@ -22,7 +34,7 @@ library(lme4)
 ## Data
 ```{r Data Import and Cleaning}
 # Import the Data
-data.p3 <- read.csv("otter2.csv", stringsAsFactors = T)
+data.p3 <- read.csv("otter2.csv", header = T)
 
 # Create a Seasonal Factor
 data.p3$Season <- factor(nrow(data.p3))
@@ -161,6 +173,110 @@ ggplot(lmod.mat, aes(y = pred, x = Month, color = Site)) + geom_line() + geom_po
 
 summary(lmod_1)
 ```
+
+
+
+## Missing Data Imputation
+
+```{r}
+otters <- data.p3 %>% mutate(Date = as.Date(paste(Year,Month.1,"01",sep="-")))
+# MAR data - LOCF Imputation
+# Include in technical report: Why is LOCF appropriate & why are we doing it?
+otters <- otters %>% mutate(Trout = na_locf(Trout), Altitude = na_locf(Altitude))
+
+# MNAR data - zero
+otters <- otters %>% mutate(Amoeba = replace(Amoeba, is.na(Amoeba), 0), Water = replace(Water, is.na(Water), 0))
+```
+
+
+## PCA
+
+Okay so the theoretical approach here is to do PCA for each month, then do change point analysis
+
+Assumptions for PCA:
+
+- continuous variables (check)
+- linear relationship between all variables (probably need to explore)
+- sampling adequacy; 5-10 cases per variable (check... ish)
+- suitable for data reduction; i.e. adequate correlations between variables (probably need to explore)
+- no significant outliers (should be fine)
+
+
+*I'm not sure that this is valid, I'm going to do some more editing to all of this*
+```{r}
+exp <- otters %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% prcomp()
+pca = data.frame()
+for (date in levels(as.factor(otters$Date))){
+  pca <- rbind(pca, otters %>% filter(Date == Date) %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% as.matrix() %*% exp$rotation)
+}
+date = c()
+for (level in levels(as.factor(otters$Date))){
+  date = c(date, (rep(level,10)))
+}
+pca$date = date
+pca$variable = rep(colnames(otters)[-c(1,5,6,7,8,14,15,16)])
+pca %>% ggplot(aes(x = date, y = PC1, group = variable, colour = variable)) + geom_line() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+pca %>% ggplot(aes(x = date, y = PC2, group = variable, colour = variable)) + geom_line()+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+```{r}
+pca %>% ggplot(aes(x = date, y = PC1, group = variable, colour = variable)) + geom_line() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + facet_wrap(.~variable)
+pca %>% ggplot(aes(x = date, y = PC2, group = variable, colour = variable)) + geom_line()+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + facet_wrap(.~variable)
+```
+
+
+
+**Trying this again**
+
+```{r}
+date = c()
+for (level in levels(as.factor(otters$Date))){
+  date = c(date, (rep(level,8)))
+}
+otter_pca_time = data.frame(variable = rep(colnames(otters)[-c(1,5,6,7,8,14,15,16)],20), date = date)
+
+date = c()
+for (level in levels(as.factor(otters$Date))){
+  date = c(date, (rep(level,5)))
+}
+otter_sd <- data.frame(date = date, p = rep(1:5, 20))
+for (d in 1:length(levels(as.factor(otters$Date)))){
+  date = levels(as.factor(otters$Date))[d]
+  otter_pca <- otters %>% filter(Date == date) %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% prcomp(scale. = T)
+  # print(otter_pca %>% ggbiplot(group = rownames(otters$Site), scale = 1) + scale_color_manual(values = c("Alpha" = "red", "Delta" = "orange","Gamma"="yellow","Omega"="green", "Omicron" = "blue")))
+  #print(otter_pca$rotation)
+  for (i in 1:8){
+    var = colnames(otters)[-c(1,5,6,7,8,14,15,16)][i]
+    otter_pca_time$pc1_rot[otter_pca_time$variable == var & otter_pca_time$date == date] = as.numeric(otter_pca$rotation[i,1])
+    otter_pca_time$pc2_rot[otter_pca_time$variable == var & otter_pca_time$date == date] = as.numeric(otter_pca$rotation[i,2])
+  }
+  sd <- otter_pca$sdev
+  var = sd^2
+  varPercent <- var/sum(var) * 100
+  otter_sd$varPercent[]
+  for (p in 1:5){
+    otter_sd$varPercent[otter_sd$date == date & otter_sd$p == p] = varPercent[p]
+  }
+}
+aggregate(varPercent ~ date, data = otter_sd[otter_sd$p == 1 | otter_sd$p == 2,], sum)
+otter_sd[otter_sd$p == 1 | otter_sd$p == 2,] %>% ggplot(aes(x = date, y = varPercent, group = as.factor(p), colour = as.factor(p))) + geom_point() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+otter_pca_time
+otter_pca_time %>% ggplot(aes(x = date, y = abs(pc2_rot/pc1_rot), colour = variable, group = variable)) + geom_line() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ggbiplot(otter_pca)
+
+otters %>% filter(Date == "2019-05-01") %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% prcomp(scale. = T) %>% ggbiplot()
+otters %>% filter(Date == "2019-05-01") %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% prcomp(scale. = T) %>% .$rotation
+otters %>% filter(Date == "2019-05-01") %>% select(colnames(otters)[-c(1,5,6,7,8,14,15,16)]) %>% prcomp(scale. = T) %>% .$x
+otters %>% ggplot(aes(x = Date, y = log(Activity), colour = Site)) + geom_line()
+
+otter_pca_time %>% ggplot(aes(x = date, y = abs(pc2_rot/pc1_rot), colour = variable, group = variable)) + geom_line() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+## That peak means that Water is contributing significantly more to PC2 than it is to PC1
+
+```
+
 
 
 
