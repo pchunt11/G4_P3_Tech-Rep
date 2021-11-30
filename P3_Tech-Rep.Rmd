@@ -2,15 +2,19 @@
 title: ''
 author: "Xiao Liu, LE Lee, and Paul Hunt"
 date: "11/14/2021"
-output: pdf_document
+output: 
+  pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, echo = F,
-                      message = F, warning = F)
+                      message = F, warning = F,
+                      fig.align = "center")
 library(ggplot2)
 library(ggpubr)
 library(table1)
+library(kableExtra)
+library(pander)
 library(TSA)
 library(lme4)
 ```
@@ -58,7 +62,7 @@ table_1.dat <- data.frame(Activity, Altitude,
                           Trout, Season, Caloric,
                           Water.Excess, Land,
                           Water, Amoeba)
-table1(~.|Season, data=table_1.dat,
+t1.season <- table1(~.|Season, data=table_1.dat,
        render.continuous =c(.= "Mean (SD)", .= "[Min, Max]"),
        caption = "Descriptive Statistics of
        Variables by Season")
@@ -69,14 +73,15 @@ table_2.dat <- data.frame(Activity, Altitude,
                           Trout, Site, Caloric,
                           Water.Excess, Land,
                           Water, Amoeba)
-table1(~.|Site, data=table_2.dat,
+t1.site <- table1(~.|Site, data=table_2.dat,
        render.continuous =c(.= "Mean (SD)", .= "[Min, Max]"),
        overall = F,
        caption = "Descriptive Statistics of
        Variables by Capture Site")
 ```
 
-### Exploratory Data Analysis
+## Exploratory Data Analysis
+
 ```{r Dependent Variable, fig.cap="Here we have plotted the change in activity at the five sites in the months since the beginning of the study. The general upward trend for all sites and the potential seasonal variation are more evident in the log-scale."}
 gg1.1 <- ggplot(data = data.p3,
                 aes(x = Month, y = Activity, color = Site)) +
@@ -88,19 +93,46 @@ gg1.2 <- ggplot(data = data.p3,
   geom_point() +
   geom_smooth(se = F) + labs(x = NULL)
 
-gg1 <- ggarrange(gg1.1,gg1.2, nrow = 1,
+gg1.a <- ggarrange(gg1.1,gg1.2, nrow = 1,
                  common.legend = T,
                  legend = "right")
-annotate_figure(gg1,
+gg1 <- annotate_figure(gg1.a,
                 bottom = text_grob("Months since Beginning of Study", size = 11),
                 top = "Changes in Activity over Time by Site")
+gg1
 ```
 
-```{r}
-par(mfrow = c(2,1))
-acf(Activity)
-pacf(Activity, main = NULL)
+```{r Autocorrelation, fig.ncol = 2}
+acf(Activity, main = "Autocorrelation of Activity",
+    xlab = "")
+pacf(Activity, main = "")
 ```
+
+```{r Correlletions with P-vals}
+cor.mat <- function(X){
+  tbl <- matrix(numeric(ncol(X)^2),
+                ncol = ncol(X),
+                nrow = ncol(X))
+  row.names(tbl) <- colnames(X)
+  colnames(tbl)  <- colnames(X)
+  
+  for(i in 1:ncol(X)){
+    for(j in i:ncol(X)){
+      tbl[j,i] <- round(cor.test(X[,i], X[,j])$p.value, 3)
+      tbl[i,j] <- round(cor(X[,i], X[,j]), 3)
+    }
+  }
+  tbl <- as.table(tbl)
+  diag(tbl) <- ""
+  tbl
+}
+
+colin <- cor.mat(na.omit(data.p3[,sapply(data.p3, is.numeric)==T]))
+colin.tbl <- colin %>% kbl(digits = 3, booktabs = T,
+                           caption = "Covariates with correlation coefficients in the upper triangle and p-values in the lower triangle") %>%
+  kable_classic()
+```
+
 
 ```{r Scatterplot Matrix, fig.cap = "Here wehave included the predictor variables with clear and potential co-linearity in a scatterplot matrix with correlation coefficients in the upper triangle. Of particular concern is the nearly perfect inverse relationship between time on land and in water, and the strong relationship between those two variables and caloric expenditure."}
 
@@ -110,11 +142,13 @@ par(usr = c(0, 1, 0, 1))
 txt <- as.character(format(cor(x, y), digits=2))
 text(0.5, 0.5, txt)
 }
-pairs(na.omit(data.p3[,c("Altitude", "Trout", "Caloric", "Land", "Water")]),
+pairs(na.omit(data.p3[,c("Altitude", "Amoeba", "Trout", "Caloric", "Land", "Water")]),
       main = "Scatterplot of Variables Exhibiting Co-linearity",
+      col = "blue", pch = 19, cex =0.85,
       upper.panel = panel.cor)
 
 ```
+
 
 ```{r Seasonal effects on predictors, fig.cap="Boxplots of the predictor variables by season show little change between seasons for any of the predictors."}
 fig3.1 <- ggplot(data.p3, aes(fill = Season, y = Altitude)) + geom_boxplot()
@@ -152,14 +186,14 @@ annotate_figure(fig4, top = "Predictor Variables by Location")
 
 ## Model Specification
 ```{r}
-lmod_1 <- lmer(log(Activity)~Caloric*Site+Land*Site+(Month|Site)+(Month|Month.1), data = data.p3)
+lmod_1 <- lmer(Activity~Caloric+Site+Land*Site+(Month|Site), data = data.p3)
 lmer_pred <- predict(lmod_1, newdata = data.frame(Caloric, Land, Month, Site, Month.1, Season))
 
 lmod.mat <- cbind(pred = lmer_pred, data.p3)
 
 ggplot(lmod.mat, aes(y = pred, x = Month, color = Site)) + geom_line() + geom_point(aes(y=log(Activity)))
 
-summary(lmod_1)
+pander(summary(lmod_1)$coefficients)
 ```
 
 
@@ -167,7 +201,7 @@ summary(lmod_1)
 ## Conclusion
 
 
-
+## Supplemental Figures
 
 
 
