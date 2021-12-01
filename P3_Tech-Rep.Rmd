@@ -62,11 +62,11 @@ Season[(Month.1 == 9)|
 
 data.p3$Season <- Season
 
-label(Trout)        <- "Trout Population"
-label(Water.Excess) <- "In-water Excess Activity"
-label(Land)         <- "Time spent on Land"
-label(Caloric)      <- "Caloric Expenditure"
-label(Water)        <- "Water Availability"
+table1::label(data.p3$Trout)        <- "Trout Population"
+table1::label(data.p3$Water.Excess) <- "In-water Excess Activity"
+table1::label(data.p3$Land)         <- "Time spent on Land"
+table1::label(data.p3$Caloric)      <- "Caloric Expenditure"
+table1::label(data.p3$Water)        <- "Water Availability"
 ```
 
 ```{r Generating Table 1 (vars by season)}
@@ -145,13 +145,20 @@ pacf(Activity[1:20], main = "")
 
 
 ```{r Seasonal effects on predictors, fig.cap="Boxplots of the predictor variables by season show little change between seasons for any of the predictors."}
-fig3.1 <- ggplot(otters, aes(fill = Season, y = Altitude)) + geom_boxplot()
-fig3.2 <- ggplot(otters, aes(fill = Season, y = Trout)) + geom_boxplot()
-fig3.3 <- ggplot(otters, aes(fill = Season, y = Caloric)) + geom_boxplot()
-fig3.4 <- ggplot(otters, aes(fill = Season, y = Water.Excess)) + geom_boxplot()
-fig3.5 <- ggplot(otters, aes(fill = Season, y = Amoeba)) + geom_boxplot()
-fig3.6 <- ggplot(otters, aes(fill = Season, y = Land)) + geom_boxplot()
-fig3.7 <- ggplot(otters, aes(fill = Season, y = Water)) + geom_boxplot()
+fig3.1 <- ggplot(otters, aes(fill = Season, y = Altitude)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.2 <- ggplot(otters, aes(fill = Season, y = Trout)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.3 <- ggplot(otters, aes(fill = Season, y = Caloric)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.4 <- ggplot(otters, aes(fill = Season, y = Water.Excess)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.5 <- ggplot(otters, aes(fill = Season, y = Amoeba)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.6 <- ggplot(otters, aes(fill = Season, y = Land)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig3.7 <- ggplot(otters, aes(fill = Season, y = Water)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
 fig3 <- ggarrange(fig3.1, fig3.2, fig3.3, fig3.4, fig3.5, fig3.6, fig3.7,
                   common.legend = T, legend = "right")
@@ -160,13 +167,20 @@ annotate_figure(fig3, top = "Predictor Variables by Season")
 ```
 
 ```{r Locational effects on predictors, fig.cap="The boxplots of predictor variables by location show meaningful differences between altitude, trout population, and amoeba prescence between the five locations."}
-fig4.1 <- ggplot(otters, aes(fill = Site, y = Altitude)) + geom_boxplot()
-fig4.2 <- ggplot(otters, aes(fill = Site, y = Trout)) + geom_boxplot()
-fig4.3 <- ggplot(otters, aes(fill = Site, y = Caloric)) + geom_boxplot()
-fig4.4 <- ggplot(otters, aes(fill = Site, y = Water.Excess)) + geom_boxplot()
-fig4.5 <- ggplot(otters, aes(fill = Site, y = Amoeba)) + geom_boxplot()
-fig4.6 <- ggplot(otters, aes(fill = Site, y = Land)) + geom_boxplot()
-fig4.7 <- ggplot(otters, aes(fill = Site, y = Water)) + geom_boxplot()
+fig4.1 <- ggplot(otters, aes(fill = Site, y = Altitude)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.2 <- ggplot(otters, aes(fill = Site, y = Trout)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.3 <- ggplot(otters, aes(fill = Site, y = Caloric)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.4 <- ggplot(otters, aes(fill = Site, y = Water.Excess)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.5 <- ggplot(otters, aes(fill = Site, y = Amoeba)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.6 <- ggplot(otters, aes(fill = Site, y = Land)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+fig4.7 <- ggplot(otters, aes(fill = Site, y = Water)) + geom_boxplot() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
 fig4 <- ggarrange(fig4.1, fig4.2, fig4.3, fig4.4, fig4.5, fig4.6, fig4.7,
                   common.legend = T, legend = "right")
@@ -195,10 +209,10 @@ cor.mat <- function(X){
   tbl
 }
 
-colin <- cor.mat(na.omit(otters[,sapply(data.p3, is.numeric)==T]))
+colin <- cor.mat(otters[,sapply(otters, is.numeric)])
 colin.tbl <- colin %>% kbl(digits = 3, booktabs = T,
                            caption = "Covariates with correlation coefficients in the upper triangle and p-values in the lower triangle") %>%
-  kable_classic()
+  kable_classic() %>% kable_styling(font_size = 9)
 ```
 
 ```{r Scatterplot Matrix, fig.cap = "Here we have included the predictor variables with clear and potential co-linearity in a scatterplot matrix with correlation coefficients in the upper triangle. Of particular concern is the nearly perfect inverse relationship between time on land and in water, and the strong relationship between those two variables and caloric expenditure."}
@@ -268,7 +282,9 @@ lmer_pred <- predict(lmod_1,
 
 lmod.mat <- cbind(pred = lmer_pred, otters)
 
-ggplot(lmod.mat, aes(y = pred, x = Month, color = Site)) + geom_line() + geom_point(aes(y=log(Activity), x = Month))
+ggplot(lmod.mat, aes(y = pred, x = Date, color = Site)) +
+  geom_line() + geom_point(aes(y=log(Activity), x = Date)) +
+  scale_x_date(date_labels = "%b %Y")
 ```
 
 ### Model Diagnostics
@@ -286,10 +302,11 @@ abline(h=0)
 
 ## Conclusion
 
-
+\newpage
 ## Supplemental Figures
-
-
+`r t1.season`
+`r t1.site`
+`r colin.tbl` 
 
 
 
