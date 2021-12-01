@@ -3,7 +3,8 @@ title: ''
 author: "Xiao Liu, LE Lee, and Paul Hunt"
 date: "11/14/2021"
 output: 
-  pdf_document
+  pdf_document:
+    extra_dependencies: ["flafter"]
 ---
 
 ```{r setup, include=FALSE}
@@ -102,10 +103,12 @@ gg1 <- annotate_figure(gg1.a,
 gg1
 ```
 
-```{r Autocorrelation, fig.ncol = 2}
-acf(Activity, main = "Autocorrelation of Activity",
+```{r Autocorrelation, fig.show="hold", out.height="45%", fig.height=2, fig.cap="The autocorrelation plots of activity measurements at site Alpha show a dependence on time, but not clear seasonal cycles."}
+par(mar = c(1,4,2,0.1))
+acf(Activity[1:20], main = "Autocorrelation of Activity at Site Alpha",
     xlab = "")
-pacf(Activity, main = "")
+par(mar = c(4,4,0.25,0.1))
+pacf(Activity[1:20], main = "")
 ```
 
 ```{r Correlletions with P-vals}
@@ -134,7 +137,7 @@ colin.tbl <- colin %>% kbl(digits = 3, booktabs = T,
 ```
 
 
-```{r Scatterplot Matrix, fig.cap = "Here wehave included the predictor variables with clear and potential co-linearity in a scatterplot matrix with correlation coefficients in the upper triangle. Of particular concern is the nearly perfect inverse relationship between time on land and in water, and the strong relationship between those two variables and caloric expenditure."}
+```{r Scatterplot Matrix, fig.cap = "Here we have included the predictor variables with clear and potential co-linearity in a scatterplot matrix with correlation coefficients in the upper triangle. Of particular concern is the nearly perfect inverse relationship between time on land and in water, and the strong relationship between those two variables and caloric expenditure."}
 
 panel.cor <- function(x, y, ...)
 {
